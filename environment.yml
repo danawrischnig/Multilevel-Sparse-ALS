@@ -1,0 +1,21 @@
+name: sals-env
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - numpy
+  - scipy
+  - matplotlib
+  - scikit-learn
+  - numba
+  - mpi4py
+  - petsc4py
+  - fenics-ufl       # Unified Form Language, noarch :contentReference[oaicite:0]{index=0}
+  - fenics-dolfinx   # DOLFINx für macOS‑arm64 :contentReference[oaicite:1]{index=1}
+  - tqdm
+  - pip
+  - pip:
+    - deal
+    - loguru
+    - rich
+    - sparseqr
