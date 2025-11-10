@@ -53,9 +53,9 @@ def parse_args():
         "--samplesizes",
         type=int,
         nargs="+",
-        default=[20 * int(2 ** (k / 2) * (k + 1)) for k in range(7)],
+        default=[20 * int(2 ** (k / 2) * (k + 1)) for k in range(9)],
         help=f"Numbers of training points per experiment j. Default: "
-        f"{[20 * int(2 ** (k / 2) * (k + 1)) for k in range(7)]}",
+        f"{[20 * int(2 ** (k / 2) * (k + 1)) for k in range(9)]}",
     )
     parser.add_argument(
         "--als",
@@ -85,7 +85,8 @@ def main():
     # Reference QoI: degree=2, very fine mesh (l=testlevel)
     desc = f"Generate reference data: mesh width = 2^(-{args.testlevel})"
     problem = Darcy1D(l=args.testlevel, d=args.testtruncation, degree=2)
-
+    rho = problem.rho
+    rho = np.ones(args.truncation)
     # Fixed test set for fair comparisons across methods/levels.
     np.random.seed(DEFAULT_SEED_TEST)
     testpoints = np.random.uniform(-1, 1, (args.testsize, args.testtruncation))
@@ -98,14 +99,15 @@ def main():
     # ------------------------------------
     # Baseline QoI: degree=1 at the finest *training* mesh (l=maxlevel)
     desc = f"Generate baseline FEM: mesh width = 2^(-{args.maxlevel})"
-    problem = Darcy1D(l=args.maxlevel, d=args.testtruncation, degree=1)
+    problem = Darcy1D(l=args.maxlevel, d=args.truncation, degree=1)
     femvalues = np.zeros(args.testsize)
+
     for i in tqdm(range(args.testsize), desc=desc):
         femvalues[i] = problem.get_integrated_solution(testpoints[i])
 
     # Baseline discretization error: coarse (deg=1, l=maxlevel) vs reference (deg=2, l=testlevel)
     femerror = np.sqrt(np.mean((femvalues - testvalues) ** 2))
-    print(f"FEM error (deg=1, l={args.maxlevel} vs ref): {femerror}")
+    print(f"log FEM error (deg=1, l={args.maxlevel} vs ref): {np.log(femerror)}")
 
     # -------------------------
     # Allocate multilevel arrays
@@ -161,7 +163,7 @@ def main():
             trainingvalues[j][i] = problem.get_integrated_solution(trainingpoints[j][i])
 
         # Fit surrogate on (points, values) and predict on the fixed test set.
-        tensortrain = run_ALS(trainingpoints[j], trainingvalues[j])
+        tensortrain = run_ALS(trainingpoints[j], trainingvalues[j], rho)
         predicted0[0, j] = evaluate(testpoints, tensortrain)
 
     # Store single-level predictions and work:
@@ -182,7 +184,7 @@ def main():
     #   • Learn surrogate for the base term at L and the refinements for intermediate levels
     #   • Combine via telescoping sum to form predictions at depth L
     for L in range(1, L_max):
-        l = args.maxlevel - L
+        l = args.maxlevel - L  # discretization on coarsest mesh
         problem = Darcy1D(l=l, d=args.truncation, degree=1)
         desc = f"Generate training data (L={L}): mesh width = 2^(-{l})"
 
@@ -193,6 +195,7 @@ def main():
         # Fresh containers for current level's training values at mesh level l.
         trainingvalues = [np.zeros(N) for N in args.samplesizes]
 
+        # Loop through relevant samplesizes
         for j in range(L - 1, num_samplesizes):
             N = args.samplesizes[j]
 
@@ -203,21 +206,24 @@ def main():
                 # Refinement = values(previous level) - values(current level)
                 trainingrefinements[j][i] -= v
 
-            # Base term at depth L (coarsest in the telescoping sum):
-            if j >= L:
-                tensortrain = run_ALS(trainingpoints[j], trainingvalues[j])
+            # Base term: need L - 1 smaller sample sizes from sample size array:
+            if j > L - 1:
+                tensortrain = run_ALS(trainingpoints[j], trainingvalues[j], rho)
                 predicted0[L, j] = evaluate(testpoints, tensortrain)
 
-            # Refinement terms for intermediate levels in the telescoping sum:
+            # Refinements: largest sample size can only be used for base term:
             if j < num_samplesizes - 1:
-                tensortrain = run_ALS(trainingpoints[j], trainingrefinements[j])
+                tensortrain = run_ALS(trainingpoints[j], trainingrefinements[j], rho)
                 predictedrefinements[L - 1, j] = evaluate(testpoints, tensortrain)
 
         # -----------------
         # Combine (telescoping)
         # -----------------
-        expected = num_samplesizes - L  # number of valid (j) entries at depth L
-        assert predicted0[L, L:].shape[0] == expected
+        expected = (
+            num_samplesizes - L,
+            args.testsize,
+        )  # number of valid (j) entries at depth L
+        assert predicted0[L, L:].shape == expected
 
         # Start with the coarsest/base prediction at depth L
         predictedvalues[L, L:] = predicted0[L, L:]
@@ -227,16 +233,15 @@ def main():
         # Add refinements from shallower depths to complete the telescoping sum
         for j in range(1, L):
             add = predictedrefinements[L - j, L - j : num_samplesizes - j]
-            assert add.shape[0] == expected
+            assert add.shape == expected
             predictedvalues[L, L:] += add
-            # Work model for refinements; factor 3*2^(l+j-1) is an example analytical weight
+            # Work model for refinements; factor 3*2^(l+j-1) = 2^(l+j-1) + 2^(l+j)
             work[L, L:] += np.array(
                 [
                     N * 3 * 2 ** (l + j - 1)
                     for N in args.samplesizes[L - j : num_samplesizes - j]
                 ]
             )
-
         # RMSE vs. fine reference for all j valid at this depth L
         er[L] = np.sqrt(np.mean((predictedvalues[L] - testvalues) ** 2, axis=1))
 

@@ -73,7 +73,7 @@ def main():
 
     # Optional: horizontal reference line for FEM baseline error
     # Uncomment if you want to see where the FEM discretization sits
-    # ax.axhline(femerror, linestyle="--", linewidth=1, color="gray", label="FEM error")
+    ax.axhline(femerror, linestyle="--", linewidth=1, color="gray", label="FEM error")
 
     # Log-log scales
     ax.set_xscale("log")
@@ -83,6 +83,8 @@ def main():
     ax.set_xlabel("Work (model units)")
     ax.set_ylabel("Error (RMSE vs. reference)")
     ax.grid(True, which="both", linestyle=":")
+
+    plt.title(fn)
 
     # Legend and layout
     ax.legend()

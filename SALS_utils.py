@@ -4,7 +4,7 @@ from sparse_als import SparseALS as SALS
 from semisparse_als import SemiSparseALS as SSALS
 
 
-def _run_ALS(points, values, ALS=SALS, stagnation_threshold=3, max_it=500):
+def _run_ALS(points, values, rho, ALS=SALS, stagnation_threshold=3, max_it=500):
     """
     Runs the Semi-Sparse Alternating Least Squares (ALS) algorithm to build a surrogate model.
 
@@ -22,7 +22,12 @@ def _run_ALS(points, values, ALS=SALS, stagnation_threshold=3, max_it=500):
     measures = legval(points, np.diag(factors)).T  # Compute Legendre polynomial valuess
 
     weights = np.ones(N, dtype=float)  # Initialize weights to 1
-    weight_sequence = np.tile(factors, (d, 1))
+
+    if rho is None:
+        rho = np.ones(d)
+
+    weight_sequence = factors[None, :] * rho[:, None] ** np.arange(d)
+
     sals = ALS(measures, values, weights, weight_sequence, perform_checks=True)
 
     training_errors = [sals.residual()]
@@ -42,7 +47,7 @@ def _run_ALS(points, values, ALS=SALS, stagnation_threshold=3, max_it=500):
     return sals.components
 
 
-def run_SALS(points, values, stagnation_threshold=3, max_it=500):
+def run_SALS(points, values, rho, stagnation_threshold=3, max_it=500):
     """
     Runs the Sparse Alternating Least Squares (ALS) algorithm to build a surrogate model.
 
@@ -58,13 +63,14 @@ def run_SALS(points, values, stagnation_threshold=3, max_it=500):
     return _run_ALS(
         points,
         values,
+        rho,
         ALS=SALS,
         stagnation_threshold=stagnation_threshold,
         max_it=max_it,
     )
 
 
-def run_SSALS(points, values, stagnation_threshold=3, max_it=500):
+def run_SSALS(points, values, rho, stagnation_threshold=3, max_it=500):
     """
     Runs the Semi-Sparse Alternating Least Squares (ALS) algorithm to build a surrogate model.
 
@@ -80,6 +86,7 @@ def run_SSALS(points, values, stagnation_threshold=3, max_it=500):
     return _run_ALS(
         points,
         values,
+        rho,
         ALS=SSALS,
         stagnation_threshold=stagnation_threshold,
         max_it=max_it,

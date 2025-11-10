@@ -11,14 +11,22 @@ import sparseqr
 import deal
 from loguru import logger
 
-from sparse_qc import fold_all, is_sparse_matrix, sparse_qc, kron_dot_qpm, diag_kron_conjugate_qpm
+from sparse_qc import (
+    fold_all,
+    is_sparse_matrix,
+    sparse_qc,
+    kron_dot_qpm,
+    diag_kron_conjugate_qpm,
+)
 from lasso_lars import SimpleOperator, lasso_lars_cv, ConvergenceWarning
 
 NonNegativeInt = NewType("NonNegativeInt", int)
 PositiveInt = NewType("PositiveInt", int)
 IntArray = NDArray[np.integer]
 FloatArray = NDArray[np.floating]
-warnings.filterwarnings(action="ignore", category=ConvergenceWarning, module="lasso_lars")
+warnings.filterwarnings(
+    action="ignore", category=ConvergenceWarning, module="lasso_lars"
+)
 
 
 # Let P be the operator that maps the core space to the ambient tensor product space.
@@ -40,7 +48,9 @@ warnings.filterwarnings(action="ignore", category=ConvergenceWarning, module="la
 
 
 def permutation_matrix(permutation: IntArray) -> sps.coo_matrix:
-    return sps.coo_matrix((np.ones(len(permutation)), (permutation, np.arange(len(permutation)))))
+    return sps.coo_matrix(
+        (np.ones(len(permutation)), (permutation, np.arange(len(permutation))))
+    )
 
 
 def qc(matrix: sps.spmatrix) -> tuple[sps.csr_matrix, sps.csr_matrix]:
@@ -92,7 +102,9 @@ def deflated_sparse_qc_kron(
     q1_weights = diag_kron_conjugate_qpm(left_weights, right_weights, q1)
     full_probabilities = 1 / q1_weights
     full_probabilities /= np.sum(full_probabilities)
-    rank_inflation = min(rank_inflation, len(full_probabilities), q2.shape[0] - q2.shape[1])
+    rank_inflation = min(
+        rank_inflation, len(full_probabilities), q2.shape[0] - q2.shape[1]
+    )
     indices = np.random.choice(
         len(full_probabilities),
         rank_inflation,
@@ -100,7 +112,9 @@ def deflated_sparse_qc_kron(
         p=full_probabilities,
     )
     E = lambda k: np.eye(q2.shape[0], 1, k=-k)
-    q2, *_ = sparseqr.qr(sps.hstack([q2] + [E(index) for index in indices]), economy=True)
+    q2, *_ = sparseqr.qr(
+        sps.hstack([q2] + [E(index) for index in indices]), economy=True
+    )
     c2 = q2.T @ c1
     assert np.allclose((q2 @ c2 - c1).data, 0)
     rank += rank_inflation
@@ -130,7 +144,9 @@ def deflated_sparse_qc_kron(
 
 def is_orthogonal(matrix: sps.spmatrix) -> bool:
     assert isinstance(matrix, sps.spmatrix)
-    return matrix.shape[0] >= matrix.shape[1] and np.allclose((matrix.T @ matrix - sps.eye(matrix.shape[1])).data, 0)
+    return matrix.shape[0] >= matrix.shape[1] and np.allclose(
+        (matrix.T @ matrix - sps.eye(matrix.shape[1])).data, 0
+    )
 
 
 class SemiSparseALS(object):
@@ -187,9 +203,17 @@ class SemiSparseALS(object):
             raise AttributeError("'SparseALS' object attribute 'measures' is read-only")
         if not (
             len(measures) > 0
-            and all(m.ndim == 2 and m.shape[0] > 0 and m.shape[1] > 0 and np.all(np.isfinite(m)) for m in measures)
+            and all(
+                m.ndim == 2
+                and m.shape[0] > 0
+                and m.shape[1] > 0
+                and np.all(np.isfinite(m))
+                for m in measures
+            )
         ):
-            raise ValueError("'measures' must be a sequence of finite, two-dimensional arrays")
+            raise ValueError(
+                "'measures' must be a sequence of finite, two-dimensional arrays"
+            )
         if not all(m.shape[0] == measures[0].shape[0] for m in measures[1:]):
             raise ValueError("arrays in 'measures' must have the same first dimensions")
         if not all(np.all(m[:, 0] == 1) for m in measures):
@@ -204,12 +228,20 @@ class SemiSparseALS(object):
     def values(self, values: FloatArray):
         if hasattr(self, "values"):
             raise AttributeError("'SparseALS' object attribute 'values' is read-only")
-        if not (values.ndim == 1 and values.shape[0] > 0 and np.all(np.isfinite(values))):
-            raise ValueError("'values' must be a sequence of finite, one-dimensional array")
+        if not (
+            values.ndim == 1 and values.shape[0] > 0 and np.all(np.isfinite(values))
+        ):
+            raise ValueError(
+                "'values' must be a sequence of finite, one-dimensional array"
+            )
         if not hasattr(self, "measures"):
-            raise ValueError("'SparseALS' object attribute 'measures' must be set before 'values'")
+            raise ValueError(
+                "'SparseALS' object attribute 'measures' must be set before 'values'"
+            )
         if values.shape != (self.measures[0].shape[0],):
-            raise ValueError("'values' is incompatible with 'SparseALS' object attributes 'measures'")
+            raise ValueError(
+                "'values' is incompatible with 'SparseALS' object attributes 'measures'"
+            )
         self.__values = values
 
     @property
@@ -219,21 +251,36 @@ class SemiSparseALS(object):
     @weight_sequences.setter
     def weight_sequences(self, weight_sequences: list[FloatArray]):
         if hasattr(self, "weight_sequences"):
-            raise AttributeError("'SparseALS' object attribute 'weight_sequences' is read-only")
+            raise AttributeError(
+                "'SparseALS' object attribute 'weight_sequences' is read-only"
+            )
         if not (
             len(weight_sequences) > 0
             and all(
-                w.ndim == 1 and w.shape[0] > 0 and np.all(np.isfinite(w)) and np.all(w >= 0) for w in weight_sequences
+                w.ndim == 1
+                and w.shape[0] > 0
+                and np.all(np.isfinite(w))
+                and np.all(w >= 0)
+                for w in weight_sequences
             )
         ):
-            raise ValueError("'weight_sequences' must be a sequence of finite, non-negative, one-dimensional arrays")
+            raise ValueError(
+                "'weight_sequences' must be a sequence of finite, non-negative, one-dimensional arrays"
+            )
         if not hasattr(self, "measures"):
-            raise ValueError("'SparseALS' object attribute 'measures' must be set before 'weight_sequences'")
+            raise ValueError(
+                "'SparseALS' object attribute 'measures' must be set before 'weight_sequences'"
+            )
         if not (
             len(weight_sequences) == len(self.measures)
-            and all(w.shape == (m.shape[1],) for w, m in zip(weight_sequences, self.measures))
+            and all(
+                w.shape == (m.shape[1],)
+                for w, m in zip(weight_sequences, self.measures)
+            )
         ):
-            raise ValueError("'weight_sequences' is incompatible with 'SparseALS' object attributes 'measures'")
+            raise ValueError(
+                "'weight_sequences' is incompatible with 'SparseALS' object attributes 'measures'"
+            )
         # Let measures[:, i] denote a single rank-one measure (shape: (order, dimension)).
         # The entries of the tensor kron(measures[i]) must be bounded by those of kron(weight_sequences), i.e.
         #      abs(kron(measures[:, i]) / kron(weight_sequences)) <= 1  (where <= holds element-wise)
@@ -241,16 +288,22 @@ class SemiSparseALS(object):
         # <--> kron(abs(measures[:, i]) / weight_sequences) <= 1        (where <= holds element-wise)
         order, sample_size, dimension = self.measures.shape
         weight_sequences = np.asarray(weight_sequences)
-        self.weight_sequence_sharpness = abs(self.measures) / weight_sequences[:, None, :]
+        self.weight_sequence_sharpness = (
+            abs(self.measures) / weight_sequences[:, None, :]
+        )
         assert self.weight_sequence_sharpness.shape == (order, sample_size, dimension)
         # <--> max(kron(abs(measures[:, i]) / weight_sequences)) <= 1
         # <--> prod(max(abs(measures[:, i]) / weight_sequences, axis=1)) <= 1.
-        self.weight_sequence_sharpness = np.product(np.max(self.weight_sequence_sharpness, axis=2), axis=0)
+        self.weight_sequence_sharpness = np.prod(
+            np.max(self.weight_sequence_sharpness, axis=2), axis=0
+        )
         assert self.weight_sequence_sharpness.shape == (sample_size,)
         # Since this has to hold for every i, ...
         self.weight_sequence_sharpness = np.max(self.weight_sequence_sharpness)
         if self.perform_checks and self.weight_sequence_sharpness > 1 + 1e-3:
-            raise ValueError("'weight_sequences' must be larger than the sup norm of the basis functions")
+            raise ValueError(
+                "'weight_sequences' must be larger than the sup norm of the basis functions"
+            )
         self.__weight_sequences = weight_sequences
 
     @property
@@ -286,7 +339,10 @@ class SemiSparseALS(object):
     @property
     def ranks(self) -> list[PositiveInt]:
         """Return the representation ranks of the tensor train."""
-        return [cast(PositiveInt, self.cshape(position)[2]) for position in range(self.order - 1)]
+        return [
+            cast(PositiveInt, self.cshape(position)[2])
+            for position in range(self.order - 1)
+        ]
 
     @property
     def order(self) -> PositiveInt:
@@ -296,10 +352,14 @@ class SemiSparseALS(object):
     @property
     def parameters(self) -> NonNegativeInt:
         """Return the number of parameters."""
-        return cast(NonNegativeInt, sum(component.nnz for component in self.__components))
+        return cast(
+            NonNegativeInt, sum(component.nnz for component in self.__components)
+        )
 
     @deal.pre(lambda self, position: 0 <= position < self.order)
-    @deal.post(lambda shape: len(shape) == 3 and shape[0] > 0 and shape[1] > 0 and shape[2] > 0)
+    @deal.post(
+        lambda shape: len(shape) == 3 and shape[0] > 0 and shape[1] > 0 and shape[2] > 0
+    )
     def cshape(self, position: int) -> tuple[PositiveInt, PositiveInt, PositiveInt]:
         """Return the shape of the component at the given position."""
         dimenion = self.dimensions[position]
@@ -319,14 +379,21 @@ class SemiSparseALS(object):
     @property
     def components(self) -> list[FloatArray]:
         """Return the list of component tensors."""
-        return [self.__components[position].toarray().reshape(self.cshape(position)) for position in range(self.order)]
+        return [
+            self.__components[position].toarray().reshape(self.cshape(position))
+            for position in range(self.order)
+        ]
 
     @components.setter
     def components(self, components: list[FloatArray]):
         if hasattr(self, "components"):
-            raise AttributeError("'SparseALS' object attribute 'components' is read-only")
+            raise AttributeError(
+                "'SparseALS' object attribute 'components' is read-only"
+            )
         if not (hasattr(self, "corePosition") and 0 <= self.corePosition < self.order):
-            raise AttributeError("'SparseALS' object attribute 'corePosition' is out of bounds")
+            raise AttributeError(
+                "'SparseALS' object attribute 'corePosition' is out of bounds"
+            )
         if len(components) != self.order:
             raise ValueError("inconsistent length of 'components'")
         rightRank = 1
@@ -345,9 +412,14 @@ class SemiSparseALS(object):
         self.__components = [cast(sps.spmatrix, None)] * self.order
         for position in range(self.order):
             component = components[position]
-            self.set_component(position, sps.csr_matrix(component.reshape(-1)), component.shape)
+            self.set_component(
+                position, sps.csr_matrix(component.reshape(-1)), component.shape
+            )
 
-    @deal.pre(lambda self, position, unfolding: 0 <= position < self.order and 0 <= unfolding < 4)
+    @deal.pre(
+        lambda self, position, unfolding: 0 <= position < self.order
+        and 0 <= unfolding < 4
+    )
     def get_component(self, position: int, unfolding: int) -> sps.spmatrix:
         """Return the specified unfolding of the specified component tensor."""
         component = self.__components[position]
@@ -361,12 +433,14 @@ class SemiSparseALS(object):
             return component.reshape((-1, 1), copy=True)
 
     @fold_all
-    def is_valid_component(self, position: int, component: sps.spmatrix, shape: tuple[int, int, int]):
+    def is_valid_component(
+        self, position: int, component: sps.spmatrix, shape: tuple[int, int, int]
+    ):
         """Check if the given component is valid."""
         yield 0 <= position < self.order
         yield is_sparse_matrix(component)
-        yield np.product(component.shape) == np.product(shape)
-        yield len(shape) == 3 and np.product(shape) > 0
+        yield np.prod(component.shape) == np.prod(shape)
+        yield len(shape) == 3 and np.prod(shape) > 0
         if self.__initialised and position < self.corePosition:
             yield is_orthogonal(component.reshape(-1, shape[2]))
         elif self.__initialised and position > self.corePosition:
@@ -375,11 +449,17 @@ class SemiSparseALS(object):
             yield np.all(np.isfinite(component.data))
 
     @deal.pre(is_valid_component)
-    def set_component(self, position: int, component: sps.spmatrix, shape: tuple[int, int, int]):
+    def set_component(
+        self, position: int, component: sps.spmatrix, shape: tuple[int, int, int]
+    ):
         if position < self.corePosition:
-            self.__components[position] = component.reshape((shape[0] * shape[1], shape[2]), copy=True)
+            self.__components[position] = component.reshape(
+                (shape[0] * shape[1], shape[2]), copy=True
+            )
         else:
-            self.__components[position] = component.reshape((shape[0], shape[1] * shape[2]), copy=True)
+            self.__components[position] = component.reshape(
+                (shape[0], shape[1] * shape[2]), copy=True
+            )
 
     @fold_all
     def has_consistent_components(self):
@@ -415,15 +495,23 @@ class SemiSparseALS(object):
         for position in range(self.corePosition):
             leftRank = self.cshape(position)[0]
             stackEntry = self.__stack[position - 1]
-            yield isinstance(stackEntry, np.ndarray) and stackEntry.shape == (self.sampleSize, leftRank)
+            yield isinstance(stackEntry, np.ndarray) and stackEntry.shape == (
+                self.sampleSize,
+                leftRank,
+            )
             stackEntry = self.__weightStack[position - 1]
             yield isinstance(stackEntry, np.ndarray) and stackEntry.shape == (leftRank,)
         for position in range(self.corePosition + 1, self.order):
             rightRank = self.cshape(position)[2]
             stackEntry = self.__stack[position + 1]
-            yield isinstance(stackEntry, np.ndarray) and stackEntry.shape == (self.sampleSize, rightRank)
+            yield isinstance(stackEntry, np.ndarray) and stackEntry.shape == (
+                self.sampleSize,
+                rightRank,
+            )
             stackEntry = self.__weightStack[position + 1]
-            yield isinstance(stackEntry, np.ndarray) and stackEntry.shape == (rightRank,)
+            yield isinstance(stackEntry, np.ndarray) and stackEntry.shape == (
+                rightRank,
+            )
 
     @fold_all
     def is_canonicalised(self):
@@ -465,7 +553,9 @@ class SemiSparseALS(object):
             # TODO: Is it still important, that the old cores are retrieved before the core position changes?
             self.corePosition = k - 1
             Q, P, C, weights = deflated_sparse_qc_kron(
-                oldCore.T, left_weights=self.weight_sequences[k], right_weights=self.__weightStack[k + 1]
+                oldCore.T,
+                left_weights=self.weight_sequences[k],
+                right_weights=self.__weightStack[k + 1],
             )
             if __debug__:
                 assert np.all(np.isfinite(Q.data))
@@ -476,7 +566,8 @@ class SemiSparseALS(object):
                 assert np.allclose((P.T @ P - sps.eye(P.shape[1])).data, 0)
                 assert np.allclose((Q @ P @ C - oldCore.T).data, 0)
                 diag_weights = sps.kron(
-                    sps.diags([self.weight_sequences[k]], [0]), sps.diags([self.__weightStack[k + 1]], [0])
+                    sps.diags([self.weight_sequences[k]], [0]),
+                    sps.diags([self.__weightStack[k + 1]], [0]),
                 )
                 diag_weights = (Q.T @ diag_weights @ Q).tocsr()
                 diag_weights.eliminate_zeros()
@@ -489,8 +580,16 @@ class SemiSparseALS(object):
             assert C.T.shape == (oldMiddleRank, newMiddleRank)
             oldCore = QP.T
             newCore = newCore @ C.T
-            self.set_component(position=k, component=oldCore, shape=(newMiddleRank, rightDimension, rightRank))
-            self.set_component(position=k - 1, component=newCore, shape=(leftRank, leftDimension, newMiddleRank))
+            self.set_component(
+                position=k,
+                component=oldCore,
+                shape=(newMiddleRank, rightDimension, rightRank),
+            )
+            self.set_component(
+                position=k - 1,
+                component=newCore,
+                shape=(leftRank, leftDimension, newMiddleRank),
+            )
             logger.debug(f"New nnz: {newCore.nnz:d} + {oldCore.nnz:d}")
 
             # Compute out[i] = outer(measures[k][i], stack[k + 1][i]) @ oldCore.T == outer(measures[k][i], stack[k + 1][i]) @ Q @ P
@@ -515,7 +614,9 @@ class SemiSparseALS(object):
             # TODO: Is it still important, that the old cores are retrieved before the core position changes?
             self.corePosition = k + 1
             Q, P, C, weights = deflated_sparse_qc_kron(
-                oldCore, left_weights=self.__weightStack[k - 1], right_weights=self.weight_sequences[k]
+                oldCore,
+                left_weights=self.__weightStack[k - 1],
+                right_weights=self.weight_sequences[k],
             )
             if __debug__:
                 assert np.all(np.isfinite(Q.data))
@@ -526,7 +627,8 @@ class SemiSparseALS(object):
                 assert np.allclose((P.T @ P - sps.eye(P.shape[1])).data, 0)
                 assert np.allclose((Q @ P @ C - oldCore).data, 0)
                 diag_weights = sps.kron(
-                    sps.diags([self.__weightStack[k - 1]], [0]), sps.diags([self.weight_sequences[k]], [0])
+                    sps.diags([self.__weightStack[k - 1]], [0]),
+                    sps.diags([self.weight_sequences[k]], [0]),
                 )
                 diag_weights = (Q.T @ diag_weights @ Q).tocsr()
                 diag_weights.eliminate_zeros()
@@ -539,8 +641,16 @@ class SemiSparseALS(object):
             assert C.shape == (newMiddleRank, oldMiddleRank)
             oldCore = QP
             newCore = C @ newCore
-            self.set_component(position=k, component=oldCore, shape=(leftRank, leftDimension, newMiddleRank))
-            self.set_component(position=k + 1, component=newCore, shape=(newMiddleRank, rightDimension, rightRank))
+            self.set_component(
+                position=k,
+                component=oldCore,
+                shape=(leftRank, leftDimension, newMiddleRank),
+            )
+            self.set_component(
+                position=k + 1,
+                component=newCore,
+                shape=(newMiddleRank, rightDimension, rightRank),
+            )
             logger.debug(f"New nnz: {newCore.nnz:d} + {oldCore.nnz:d}")
 
             # Compute out[i] = outer(stack[k - 1][i], measures[k][i]) @ oldCore == outer(stack[k - 1][i], measures[k][i]) @ Q @ P
@@ -560,7 +670,9 @@ class SemiSparseALS(object):
         lOp = self.__stack[k - 1][set]  # type: ignore
         eOp = self.measures[k][set]
         rOp = self.__stack[k + 1][set]  # type: ignore
-        operator = (lOp[:, :, None, None] * eOp[:, None, :, None] * rOp[:, None, None, :]).reshape(lOp.shape[0], -1)
+        operator = (
+            lOp[:, :, None, None] * eOp[:, None, :, None] * rOp[:, None, None, :]
+        ).reshape(lOp.shape[0], -1)
         # nl, ne, nr -> nler
         operator /= weights[None]
         assert np.all(np.isfinite(operator))
@@ -573,7 +685,9 @@ class SemiSparseALS(object):
         # max_features = 2 * (self.__components[k].nnz + 1)  # NOTE This severely worsens the performance.
         # TODO One could try an increasing sequence for max_features that depends on the number of stagnations.
         max_features = None
-        model = lasso_lars_cv(operator, self.values[set], cv=cv, max_features=max_features)
+        model = lasso_lars_cv(
+            operator, self.values[set], cv=cv, max_features=max_features
+        )
         assert model.alpha_ >= 0
         assert len(model.active_) > 0
         logger.debug(f"Active coefficients: {len(model.active_)} / {len(weights)}")
@@ -588,7 +702,9 @@ class SemiSparseALS(object):
         coreRow = np.zeros(len(model.active_), dtype=np.int32)
         coreCol = model.active_
         core = sps.coo_matrix((coreData, (coreRow, coreCol)), shape=(1, len(weights)))
-        self.set_component(position=k, component=core, shape=(lOp.shape[1], eOp.shape[1], rOp.shape[1]))
+        self.set_component(
+            position=k, component=core, shape=(lOp.shape[1], eOp.shape[1], rOp.shape[1])
+        )
         self.regularisationParameters[k] = model.alpha_
         self.componentDensities[k] = len(model.active_) / len(weights)
         return model.cv_error_
@@ -612,11 +728,15 @@ class SemiSparseALS(object):
         lOp = self.__stack[k - 1][set]  # type: ignore
         eOp = self.measures[k][set]
         rOp = self.__stack[k + 1][set]  # type: ignore
-        erOp = (eOp[:, :, None] * rOp[:, None, :]).reshape(eOp.shape[0], -1)  # ne, nr -> ner
+        erOp = (eOp[:, :, None] * rOp[:, None, :]).reshape(
+            eOp.shape[0], -1
+        )  # ne, nr -> ner
         core = self.get_component(position=k, unfolding=1)
         assert core.shape == (lOp.shape[1], erOp.shape[1])
         if core.shape[0] < core.shape[1]:
             prediction = np.einsum("nl, nl -> n", erOp @ core.T, lOp)
         else:
             prediction = np.einsum("nx, nx -> n", lOp @ core, erOp)
-        return np.linalg.norm(prediction - self.values[set]) / np.linalg.norm(self.values[set])
+        return np.linalg.norm(prediction - self.values[set]) / np.linalg.norm(
+            self.values[set]
+        )
