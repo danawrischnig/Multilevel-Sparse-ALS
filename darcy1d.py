@@ -67,15 +67,19 @@ class Darcy1D:
             fem.Constant(domain, PETSc.ScalarType(0)) for _ in range(self.d)
         ]
 
-        # Base coefficient a_0 (slightly > ζ(2) = π^2/6)
-        a = PETSc.ScalarType(1.001 * zeta(2, 1))
+        # Base coefficient a_0
+        delta = 0.01
+        c = 1.01
+        b = 0.75
+        self.rho = c * np.arange(1, self.d + 1) ** b
+        a = PETSc.ScalarType(delta + c * zeta(2 - b, 1))
 
         # Add truncated parametric sum to diffusion coefficient
         for j in range(self.d):
             a += self.y[j] / ((j + 1) ** 2) * ufl.cos((j + 1) * ufl.pi * x)
 
         # Right-hand side (constant source)
-        f = fem.Constant(domain, PETSc.ScalarType(100))  # -50.0
+        f = fem.Constant(domain, PETSc.ScalarType(100.0))
 
         # Robust Dirichlet boundary condition u=0 at both ends (degree- and MPI-safe)
         tdim = domain.topology.dim
