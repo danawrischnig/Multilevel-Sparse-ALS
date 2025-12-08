@@ -1,0 +1,21 @@
+{
+    "directory": "experiments0/SALS_r1/seed8",
+    "d": 6,
+    "max_discr_level": 10,
+    "samplesizes": [
+        40,
+        50,
+        80,
+        110,
+        160,
+        220,
+        320,
+        450,
+        640,
+        900,
+        1280
+    ],
+    "radius_option": 1,
+    "als": "SALS",
+    "seed": 8
+}

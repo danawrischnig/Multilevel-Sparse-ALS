@@ -48,4 +48,4 @@ for l in {7..10}; do
     python compute_surrogates.py "${EXP_DIR}" --l "${l}" --refine
 done
 
-# for als in SALS SSALS; do for r in 1 2; do ./run_experiment.sh "$als" "$r" 3; done; done
+# for als in SALS SSALS; do for r in 1 2; do ./run_experiment.sh "$als" "$r" 9; done; done

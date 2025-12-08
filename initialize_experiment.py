@@ -77,7 +77,7 @@ if __name__ == "__main__":
     print(f"  Random seed: {args.seed}")
 
     main_dir = Path(args.directory)
-    main_dir.mkdir(parents=True, exist_ok=False)
+    main_dir.mkdir(parents=True, exist_ok=True)
 
     # save args to a file in main directory for future reference (json)
     with open(main_dir / "experiment_args.json", "w") as f:
